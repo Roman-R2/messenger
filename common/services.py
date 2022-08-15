@@ -5,7 +5,6 @@ import argparse
 import json
 import socket
 import sys
-import time
 
 from common import settings
 
@@ -14,13 +13,15 @@ class HTTPStatus:
     HTTP_200_OK = 200
     HTTP_400_BAD_REQUEST = 400
 
+    TEXT_STATUS_400 = 'Bad Request'
+
 
 class CLIArguments:
     def __init__(self):
         self.port = settings.DEFAULT_PORT
         self.address = settings.DEFAULT_IP_ADDRESS
         self.parser = argparse.ArgumentParser(
-            description='Запуск серверной части по параметрам -p порт -a адрес'
+            description='Запуск по параметрам -p порт -a адрес'
         )
         self.__add_port_argument()
         self.__add_address_argument()
@@ -54,7 +55,6 @@ class CLIArguments:
 
     def check_port(self):
         """ Проверит порт на корректность. """
-        print('check', self.port)
         if self.port < 1024 or self.port > 65535:
             print(
                 'В качастве порта может быть указано только число в диапазоне от 1024 до 65535.'
@@ -73,71 +73,6 @@ class CLIArguments:
                 'В качастве адреса должен быть указан валидный ip адрес.'
             )
             sys.exit(1)
-
-
-class ServerWorker:
-    def __init__(self):
-        pass
-
-    def process_client_message(self, message):
-        """
-        Обработчик сообщений от клиентов, принимает словарь -
-        сообщение от клинта, проверяет корректность,
-        возвращает словарь-ответ для клиента
-        :param message:
-        :return:
-        """
-        if settings.ACTION in message \
-                and message[settings.ACTION] == settings.PRESENCE \
-                and settings.TIME in message \
-                and settings.USER in message \
-                and message[settings.USER][settings.ACCOUNT_NAME] == 'Guest':
-            return {
-                settings.RESPONSE: HTTPStatus.HTTP_200_OK
-            }
-        return {
-            settings.RESPONSE: HTTPStatus.HTTP_400_BAD_REQUEST,
-            settings.ERROR: 'Bad Request'
-        }
-
-
-class ClientWorker:
-    def __init__(self):
-        pass
-
-    def create_presence(self, account_name='Guest'):
-        """
-        Метод генерирует запрос о присутствии клиента
-        :param account_name:
-        :return:
-        """
-        # {
-        #   'action': 'presence',
-        #   'time': 1573760672.167031,
-        #   'user': {
-        #       'account_name': 'Guest'
-        #   }
-        # }
-        out = {
-            settings.ACTION: settings.PRESENCE,
-            settings.TIME: time.time(),
-            settings.USER: {
-                settings.ACCOUNT_NAME: account_name
-            }
-        }
-        return out
-
-    def process_ans(self, message):
-        """
-        Метод разбирает ответ сервера
-        :param message:
-        :return:
-        """
-        if settings.RESPONSE in message:
-            if message[settings.RESPONSE] == HTTPStatus.HTTP_200_OK:
-                return f'{HTTPStatus.HTTP_200_OK} : OK'
-            return f'{HTTPStatus.HTTP_400_BAD_REQUEST} : {message[settings.ERROR]}'
-        raise ValueError
 
 
 class Message:
@@ -164,8 +99,6 @@ class Message:
             raise ValueError
 
         return response
-
-
 
     def __send(self, dict_message):
         """

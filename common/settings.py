@@ -15,6 +15,9 @@ MAX_PACKAGE_LENGTH = 1024
 # Кодировка сообщений
 ENCODING = 'utf-8'
 
+# Параметры запросов по умолчанию
+GUEST_USER = 'Guest'
+
 # Прококол JIM основные ключи:
 ACTION = 'action'
 TIME = 'time'

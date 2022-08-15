@@ -5,7 +5,8 @@
 import json
 import socket
 
-from common.services import CLIArguments, Message, ClientWorker
+from app_client_side.services import ClientWorker
+from common.services import CLIArguments, Message
 
 if __name__ == '__main__':
     '''Загружаем параметы коммандной строки'''

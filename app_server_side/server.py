@@ -5,8 +5,9 @@
 import socket
 import json
 
+from app_server_side.services import ServerWorker
 from common import settings
-from common.services import CLIArguments, ServerWorker, Message
+from common.services import CLIArguments, Message
 
 if __name__ == '__main__':
     cli_arg_obj = CLIArguments()
@@ -30,6 +31,7 @@ if __name__ == '__main__':
             response = server_worker.process_client_message(
                 message_from_client
             )
+            print(response)
             Message.send(client_socket_object, response)
             client_socket_object.close()
         except (ValueError, json.JSONDecodeError):

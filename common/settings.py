@@ -1,6 +1,11 @@
 """
-Содержит настройки.
+Содержит общие настройки.
 """
+import logging
+from pathlib import Path
+
+# Исходная папка проекта
+BASE_DIR = Path(__file__).parent.parent
 
 # Порт по умолчанию для сетевого взаимодействия
 DEFAULT_PORT = 7777
@@ -14,6 +19,8 @@ MAX_CONNECTIONS = 5
 MAX_PACKAGE_LENGTH = 1024
 # Кодировка сообщений
 ENCODING = 'utf-8'
+# Текущий уровень логирования
+LOGGING_LEVEL = logging.DEBUG
 
 # Параметры запросов по умолчанию
 GUEST_USER = 'Guest'

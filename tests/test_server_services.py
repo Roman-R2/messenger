@@ -5,7 +5,6 @@ from common import settings
 from common.services import HTTPStatus
 from app_server_side.services import ServerWorker
 
-
 class TestServerServices(unittest.TestCase):
 
     def setUp(self) -> None:

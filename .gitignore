@@ -8,3 +8,6 @@ __pycache__/
 ### VENV ###
 venv/
 
+### logs ###
+app_server_side/logs/
+app_client_side/logs/

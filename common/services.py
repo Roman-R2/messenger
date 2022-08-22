@@ -3,6 +3,9 @@
 """
 import argparse
 import json
+import logging
+import logging.handlers
+import os
 import socket
 import sys
 
@@ -118,3 +121,55 @@ class Message:
     @staticmethod
     def send(socket_object, dict_message):
         return Message(socket_object).__send(dict_message)
+
+
+class GetLogger:
+    """ Служит для определения и инициализации логгера северной стороны. """
+
+    logger_format = '%(asctime)s %(levelname)s %(filename)s %(message)s'
+    logger_dir = os.path.join(
+        settings.BASE_DIR,
+        r'app_server_side\logs\server.log'
+    )
+
+    def __init__(self, logger_name='server'):
+        # создаём формировщик логов (formatter):
+        self.server_formatter = logging.Formatter(self.logger_format)
+        # Подготовка имени файла для логирования
+        self.logger = logging.getLogger(logger_name)
+        self._add_handlers()
+        self.logger.setLevel(settings.LOGGING_LEVEL)
+
+    def _get_stderr_handler(self):
+        """ Создаст поток вывода логов в поток вывода ошибок. """
+        stream_handler = logging.StreamHandler(sys.stderr)
+        stream_handler.setFormatter(self.server_formatter)
+        stream_handler.setLevel(logging.ERROR)
+        return stream_handler
+
+    def _get_rotating_file_handler(self):
+        """ Создаст поток вывода логов в файл. """
+        log_file = logging.handlers.TimedRotatingFileHandler(
+            self.logger_dir,
+            encoding=settings.ENCODING,
+            interval=1,
+            when='D'
+        )
+        log_file.setFormatter(self.server_formatter)
+        return log_file
+
+    def _get_simple_file_handler(self):
+        log_file = logging.FileHandler(
+            self.logger_dir,
+            encoding=settings.ENCODING
+        )
+        log_file.setFormatter(self.server_formatter)
+        return log_file
+
+    def _add_handlers(self):
+        """ Создаём регистратор и настраиваем его. """
+        self.logger.addHandler(self._get_stderr_handler())
+        self.logger.addHandler(self._get_rotating_file_handler())
+
+    def get_logger(self):
+        return self.logger

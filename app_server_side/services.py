@@ -1,15 +1,36 @@
 """
 Содержит сервисные классы и функции
 """
+import logging
 
 from common import settings
 from common.services import HTTPStatus
 
+from app_server_side import logging_config
 
+# Инициализация логирования сервера.
+SERVER_LOGGER = logging.getLogger('server_logger')
+
+
+def debug_logger(func):
+    def deco(*args, **kwargs):
+        result = func(*args, **kwargs)
+        SERVER_LOGGER.debug(
+            f'\t--->\t Запущен: {func.__name__}. Аннотация:'
+            f' {func.__annotations__}. '
+            f'Резулитат: {result}'
+        )
+        return result
+
+    return deco
+
+
+@debug_logger
 class ServerWorker:
     def __init__(self):
         pass
 
+    @debug_logger
     def __check_client_message(self, client_message: dict):
         """
         Проверит сообщение от клиента на корректность.
@@ -25,10 +46,12 @@ class ServerWorker:
             return False
         if client_message[settings.ACTION] != settings.PRESENCE:
             return False
-        if client_message[settings.USER][settings.ACCOUNT_NAME] != settings.GUEST_USER:
+        if client_message[settings.USER][
+            settings.ACCOUNT_NAME] != settings.GUEST_USER:
             return False
         return True
 
+    @debug_logger
     def process_client_message(self, client_message: dict):
         """
         Обработчик сообщений от клиентов, принимает словарь -

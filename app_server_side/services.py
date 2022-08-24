@@ -1,6 +1,7 @@
 """
 Содержит сервисные классы и функции
 """
+import inspect
 import logging
 
 from common import settings
@@ -15,11 +16,15 @@ SERVER_LOGGER = logging.getLogger('server_logger')
 def debug_logger(func):
     def deco(*args, **kwargs):
         result = func(*args, **kwargs)
+        # SERVER_LOGGER.debug(
+        #     f'\t--->\t Запущен: {func.__name__}. Аннотация:'
+        #     f' {func.__annotations__}. '
+        #     f'Резулитат: {result}'
+        # )
         SERVER_LOGGER.debug(
-            f'\t--->\t Запущен: {func.__name__}. Аннотация:'
-            f' {func.__annotations__}. '
-            f'Резулитат: {result}'
-        )
+            f'\t---> Была вызвана функция {func.__name__} c параметрами {args}, {kwargs}. '
+            f'Вызов из модуля {func.__module__}.'
+            f'Вызов из функции {inspect.stack()[1][3]}')
         return result
 
     return deco

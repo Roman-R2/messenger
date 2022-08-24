@@ -16,15 +16,10 @@ SERVER_LOGGER = logging.getLogger('server_logger')
 def debug_logger(func):
     def deco(*args, **kwargs):
         result = func(*args, **kwargs)
-        # SERVER_LOGGER.debug(
-        #     f'\t--->\t Запущен: {func.__name__}. Аннотация:'
-        #     f' {func.__annotations__}. '
-        #     f'Резулитат: {result}'
-        # )
         SERVER_LOGGER.debug(
             f'\t---> Была вызвана функция {func.__name__} c параметрами {args}, {kwargs}. '
             f'Вызов из модуля {func.__module__}.'
-            f'Вызов из функции {inspect.stack()[1][3]}')
+            f'Вызов из функции {inspect.stack()[1][3]}', stacklevel=2)
         return result
 
     return deco

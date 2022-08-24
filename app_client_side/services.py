@@ -1,10 +1,29 @@
 """
 Содержит сервисные классы и функции
 """
+import inspect
+import logging
 import time
 
 from common import settings
 from common.services import HTTPStatus
+
+from app_client_side import logging_config
+
+# Инициализация логирования сервера.
+CLIENT_LOGGER = logging.getLogger('client_logger')
+
+
+def debug_logger(func):
+    def deco(*args, **kwargs):
+        result = func(*args, **kwargs)
+        CLIENT_LOGGER.debug(
+            f'\t---> Была вызвана функция {func.__name__} c параметрами {args}, {kwargs}. '
+            f'Вызов из модуля {func.__module__}.'
+            f'Вызов из функции {inspect.stack()[1][3]}', stacklevel=2)
+        return result
+
+    return deco
 
 
 class ClientWorker:

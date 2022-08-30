@@ -20,16 +20,20 @@ class HTTPStatus:
 
 
 class CLIArguments:
+
+    parser_description = 'Запуск по параметрам -p порт -a адрес'
+
     def __init__(self):
         self.port = settings.DEFAULT_PORT
         self.address = settings.DEFAULT_IP_ADDRESS
         self.parser = argparse.ArgumentParser(
-            description='Запуск по параметрам -p порт -a адрес'
+            description=self.parser_description
         )
-        self.__add_port_argument()
-        self.__add_address_argument()
+        self._add_port_argument()
+        self._add_address_argument()
 
-    def __add_port_argument(self):
+
+    def _add_port_argument(self):
         self.parser.add_argument(
             '-p',
             type=int,
@@ -37,7 +41,7 @@ class CLIArguments:
             required=False
         )
 
-    def __add_address_argument(self):
+    def _add_address_argument(self):
         self.parser.add_argument(
             '-a',
             type=str,
@@ -50,13 +54,13 @@ class CLIArguments:
         args = self.parser.parse_args()
         if args.p:
             self.port = args.p
-            self.check_port()
+            self._check_port()
         if args.a:
             self.address = args.a
-            self.check_ip_address()
+            self._check_ip_address()
         return self.address, self.port
 
-    def check_port(self):
+    def _check_port(self):
         """ Проверит порт на корректность. """
         if self.port < 1024 or self.port > 65535:
             print(
@@ -64,7 +68,7 @@ class CLIArguments:
             )
             sys.exit(1)
 
-    def check_ip_address(self):
+    def _check_ip_address(self):
         """ Проверит ip адрес на корректность. """
         if not (self.address.count('.') == 3 and all(
                 [

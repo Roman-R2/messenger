@@ -5,13 +5,27 @@ import logging
 import socket
 import json
 
-from app_server_side.services import ServerWorker, debug_logger
+# Инициализация логирования сервера.
+import time
+
+import select
+
+from app_client_side.services import debug_logger
+from app_server_side.services import ServerWorker
 from common import settings
 from common.services import CLIArguments, Message
 
 import logging_config
-# Инициализация логирования сервера.
+
 SERVER_LOGGER = logging.getLogger('server_logger')
+
+
+def show_connection_params(this_connect_params):
+    print(' Параметры для соединения '.center(70, '-'))
+    print(
+        f'\tадрес {this_connect_params[0]} \n\tпорт {this_connect_params[1]}'
+    )
+    print(''.center(70, '-'))
 
 
 class ServerSocket:
@@ -24,6 +38,7 @@ class ServerSocket:
         # Готовим сокет
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.transport.bind(self.connect_params_list)
+        self.transport.settimeout(1)
         # Слушаем порт
         self.transport.listen(settings.MAX_CONNECTIONS)
 
@@ -35,43 +50,62 @@ class ServerSocket:
 if __name__ == '__main__':
     cli_arg_obj = CLIArguments()
     connect_params = cli_arg_obj.get_connect_params()
-    print(f'Получены адрес {connect_params[0]} порт {connect_params[1]}')
+    show_connection_params(connect_params)
 
     server_worker = ServerWorker()
 
+    # список клиентов , очередь сообщений
+    clients = []
+    messages = []
+
     while True:
-        client_socket_object, address_info = ServerSocket(
-            connect_params
-        ).get_transport().accept()
         try:
-            message_from_client = Message.receive(client_socket_object)
-            SERVER_LOGGER.debug(
-                f'Получили сообщение от клиента: {message_from_client}.'
-            )
-            # {'action': 'presence', 'time': 1573760672.167031, 'user': {'account_name': 'Guest'}}
-            response = server_worker.process_client_message(
-                message_from_client
-            )
-            SERVER_LOGGER.debug(
-                f'Обработали сообщение от клиента{message_from_client}'
-                f'. Ответ: {response}.'
-            )
-            print(response)
-            Message.send(client_socket_object, response)
-            SERVER_LOGGER.debug(
-                f'Отправили сообщение клиенту'
-            )
-            client_socket_object.close()
-            SERVER_LOGGER.debug(
-                f'Закрыли сокет'
-            )
-        except (ValueError, json.JSONDecodeError):
-            # print('Принято некорректное сообщение от клиента.')
-            SERVER_LOGGER.error(
-                f'Принято некорректное сообщение от клиента. Ошибка '
-                f'json.JSONDecodeError.'
-            )
-            SERVER_LOGGER.debug(
-                f'Закрыли сокет'
-            )
-            client_socket_object.close()
+            client_socket_object, address_info = ServerSocket(
+                connect_params
+            ).get_transport().accept()
+        except OSError:
+            pass
+        else:
+            SERVER_LOGGER.info(f'Установлено соедение с ПК {address_info}')
+            clients.append(client_socket_object)
+
+        recv_data_lst = []
+        send_data_lst = []
+        err_lst = []
+
+        # Проверяем на наличие ждущих клиентов
+        try:
+            if clients:
+                recv_data_lst, send_data_lst, err_lst = select.select(clients,
+                                                                      clients,
+                                                                      [], 0)
+        except OSError:
+            pass
+
+        # принимаем сообщения и если там есть сообщения,
+        # кладём в словарь, если ошибка, исключаем клиента.
+        if recv_data_lst:
+            for client_with_message in recv_data_lst:
+                try:
+                    message_from_client = Message.receive(client_with_message)
+                    message_from_client = server_worker.process_client_message(
+                        message_from_client
+                    )
+                    messages.append(message_from_client)
+                except:
+                    SERVER_LOGGER.info(
+                        f'Клиент {client_with_message.getpeername()} '
+                        f'отключился от сервера.')
+                    clients.remove(client_with_message)
+
+        # Если есть сообщения для отправки и ожидающие клиенты, отправляем им сообщение.
+        if messages and send_data_lst:
+            message = messages[0]
+            del messages[0]
+            for waiting_client in send_data_lst:
+                try:
+                    Message.send(waiting_client, message)
+                except:
+                    SERVER_LOGGER.info(
+                        f'Клиент {waiting_client.getpeername()} отключился от сервера.')
+                    clients.remove(waiting_client)

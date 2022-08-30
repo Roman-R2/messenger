@@ -3,6 +3,7 @@
 """
 import inspect
 import logging
+from pprint import pprint
 
 from common import settings
 from common.services import HTTPStatus
@@ -31,9 +32,9 @@ class ServerWorker:
         pass
 
     @debug_logger
-    def __check_client_message(self, client_message: dict):
+    def __is_presence_message(self, client_message: dict):
         """
-        Проверит сообщение от клиента на корректность.
+        Проверит что это корректное сообщение присутствия.
         :param client_message:
         :return:
         """
@@ -52,6 +53,24 @@ class ServerWorker:
         return True
 
     @debug_logger
+    def __is_text_message(self, client_message: dict):
+        """
+        Проверит что это корректное текстовое сообщение от клиента.
+        :param client_message:
+        :return:
+        """
+        # Если нет ключа action - то ошибка
+        if settings.ACTION not in client_message:
+            return False
+        if settings.TIME not in client_message:
+            return False
+        if settings.MESSAGE_TEXT not in client_message:
+            return False
+        if client_message[settings.ACTION] != settings.MESSAGE:
+            return False
+        return True
+
+    @debug_logger
     def process_client_message(self, client_message: dict):
         """
         Обработчик сообщений от клиентов, принимает словарь -
@@ -60,12 +79,29 @@ class ServerWorker:
         :param client_message:
         :return:
         """
-        # print(f'{client_message=}')
-        if self.__check_client_message(client_message):
+
+        if self.__is_presence_message(client_message):
             return {
-                settings.RESPONSE: HTTPStatus.HTTP_200_OK
+                settings.ACTION: settings.RESPONSE,
+                settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
+                settings.ACCOUNT_NAME: client_message[settings.USER][
+                    settings.ACCOUNT_NAME],
+                settings.MESSAGE_TEXT: f'Сервер: Подключение клиента {client_message[settings.USER][settings.ACCOUNT_NAME]}...',
+                settings.ERROR_TEXT: ''
             }
+        elif self.__is_text_message(client_message):
+            return {
+                settings.ACTION: settings.MESSAGE,
+                settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
+                settings.ACCOUNT_NAME: client_message[settings.ACCOUNT_NAME],
+                settings.MESSAGE_TEXT: client_message[settings.MESSAGE_TEXT],
+                settings.ERROR_TEXT: ''
+            }
+
         return {
-            settings.RESPONSE: HTTPStatus.HTTP_400_BAD_REQUEST,
-            settings.ERROR: HTTPStatus.TEXT_STATUS_400
+            settings.ACTION: settings.ERROR,
+            settings.HTTP_STATUS: HTTPStatus.HTTP_400_BAD_REQUEST,
+            settings.ACCOUNT_NAME: '',
+            settings.MESSAGE_TEXT: '',
+            settings.ERROR_TEXT: f'Запрос не опознан. Статус {HTTPStatus.TEXT_STATUS_400}'
         }

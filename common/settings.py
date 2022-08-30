@@ -30,8 +30,14 @@ ACTION = 'action'
 TIME = 'time'
 USER = 'user'
 ACCOUNT_NAME = 'account_name'
+SENDER = 'sender'
+MESSAGE = 'message'
+HTTP_STATUS = 'http_status'
+MESSAGE_TEXT = 'message_text'
+ERROR_TEXT = 'error_text'
 
-# Прочие ключи, используемые в протоколе
+# Ответы к ключам
 PRESENCE = 'presence'
 RESPONSE = 'response'
 ERROR = 'error'
+OK = 'ok'

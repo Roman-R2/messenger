@@ -43,13 +43,13 @@ class ServerWorker:
             return False
         if settings.TIME not in client_message:
             return False
-        if settings.USER not in client_message:
+        if settings.SENDER not in client_message:
             return False
         if client_message[settings.ACTION] != settings.PRESENCE:
             return False
-        if client_message[settings.USER][
-            settings.ACCOUNT_NAME] != settings.GUEST_USER:
-            return False
+        # if client_message[settings.USER][
+        #     settings.ACCOUNT_NAME] != settings.GUEST_USER:
+        #     return False
         return True
 
     @debug_logger
@@ -79,29 +79,33 @@ class ServerWorker:
         :param client_message:
         :return:
         """
-
+        print(f'{client_message=}')
         if self.__is_presence_message(client_message):
+            print('__is_presence_message')
             return {
-                settings.ACTION: settings.RESPONSE,
-                settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
-                settings.ACCOUNT_NAME: client_message[settings.USER][
-                    settings.ACCOUNT_NAME],
-                settings.MESSAGE_TEXT: f'Сервер: Подключение клиента {client_message[settings.USER][settings.ACCOUNT_NAME]}...',
-                settings.ERROR_TEXT: ''
-            }
+                       settings.ACTION: settings.RESPONSE,
+                       settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
+                       settings.SENDER: client_message[settings.SENDER],
+                       settings.MESSAGE_TEXT: f'Сервер: Подключение клиента {client_message[settings.SENDER]}...',
+                       settings.ERROR_TEXT: ''
+                   }, settings.RESPONSE
         elif self.__is_text_message(client_message):
             return {
-                settings.ACTION: settings.MESSAGE,
-                settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
-                settings.ACCOUNT_NAME: client_message[settings.ACCOUNT_NAME],
-                settings.MESSAGE_TEXT: client_message[settings.MESSAGE_TEXT],
-                settings.ERROR_TEXT: ''
-            }
+                       settings.ACTION: settings.MESSAGE,
+                       settings.HTTP_STATUS: HTTPStatus.HTTP_200_OK,
+                       settings.SENDER: client_message[
+                           settings.SENDER],
+                       settings.RECEIVER: client_message[
+                           settings.RECEIVER],
+                       settings.MESSAGE_TEXT: client_message[
+                           settings.MESSAGE_TEXT],
+                       settings.ERROR_TEXT: ''
+                   }, settings.MESSAGE
 
         return {
-            settings.ACTION: settings.ERROR,
-            settings.HTTP_STATUS: HTTPStatus.HTTP_400_BAD_REQUEST,
-            settings.ACCOUNT_NAME: '',
-            settings.MESSAGE_TEXT: '',
-            settings.ERROR_TEXT: f'Запрос не опознан. Статус {HTTPStatus.TEXT_STATUS_400}'
-        }
+                   settings.ACTION: settings.ERROR,
+                   settings.HTTP_STATUS: HTTPStatus.HTTP_400_BAD_REQUEST,
+                   settings.SENDER: '',
+                   settings.MESSAGE_TEXT: '',
+                   settings.ERROR_TEXT: f'Запрос не опознан. Статус {HTTPStatus.TEXT_STATUS_400}'
+               }, settings.ERROR

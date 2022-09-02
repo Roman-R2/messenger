@@ -5,11 +5,13 @@ import json
 import logging
 import socket
 import sys
+import threading
+import time
 
 from app_client_side.services import ClientWorker, debug_logger, \
     ClientCLIArguments
 from common.errors import ServerError, ReqFieldMissingError
-from common.services import Message
+from common.services import Message, CLIArguments
 
 from app_client_side import logging_config
 
@@ -20,7 +22,7 @@ CLIENT_LOGGER = logging.getLogger('client_logger')
 def show_connection_params(this_connect_params):
     print(' Параметры соединения '.center(70, '-'))
     print(
-        f'\tадрес {this_connect_params[0]} \n\tпорт {this_connect_params[1]} \n\tрежим {this_connect_params[2]}'
+        f'\tадрес {this_connect_params[0]} \n\tпорт {this_connect_params[1]} \n\tимя {this_connect_params[2]}'
     )
     print(''.center(70, '-'))
 
@@ -46,8 +48,8 @@ if __name__ == '__main__':
     '''Загружаем параметы коммандной строки'''
     # client.py 192.168.1.2 8079
     cli_arg_obj = ClientCLIArguments()
-    connect_address, connect_port, client_mode = cli_arg_obj.get_connect_params()
-    show_connection_params((connect_address, connect_port, client_mode))
+    connect_address, connect_port, client_name = cli_arg_obj.get_connect_params()
+    show_connection_params((connect_address, connect_port, client_name))
 
     # Получим транспорт
     transport = ClientSocket(
@@ -56,7 +58,7 @@ if __name__ == '__main__':
 
     client_worker = ClientWorker()
 
-    message_to_server = client_worker.create_presence()
+    message_to_server = client_worker.create_presence(account_name=client_name)
     CLIENT_LOGGER.debug(
         f'Сгенерировано сообщение для сервера: {message_to_server}'
     )
@@ -94,32 +96,59 @@ if __name__ == '__main__':
             f'конечный компьютер отверг запрос на подключение.')
         sys.exit(1)
     else:
-        # Если соединение с сервером установлено корректно,
-        # начинаем обмен с ним, согласно требуемому режиму.
-        # основной цикл прогрммы:
-        while True:
-            # режим работы - отправка сообщений
-            if client_mode == 'send':
-                try:
-                    Message.send(
-                        transport,
-                        client_worker.create_message(transport)
-                    )
-                except (
-                        ConnectionResetError, ConnectionError,
-                        ConnectionAbortedError):
-                    CLIENT_LOGGER.error(
-                        f'Соединение с сервером {connect_address} было потеряно.')
-                    sys.exit(1)
 
-            # Режим работы приём:
-            if client_mode == 'listen':
-                try:
-                    client_worker.message_from_server(
-                        Message.receive(transport))
-                except (
-                        ConnectionResetError, ConnectionError,
-                        ConnectionAbortedError):
-                    CLIENT_LOGGER.error(
-                        f'Соединение с сервером {connect_address} было потеряно.')
-                    sys.exit(1)
+        # Если соединение с сервером установлено корректно,
+        # запускаем клиенский процесс приёма сообщний
+        receiver = threading.Thread(
+            target=client_worker.message_from_server,
+            args=(transport, client_name),
+            daemon=True
+        )
+        receiver.start()
+
+        # затем запускаем отправку сообщений и взаимодействие с пользователем.
+        user_interface = threading.Thread(
+            target=client_worker.user_interactive,
+            args=(transport, client_name),
+            daemon=True
+        )
+        user_interface.start()
+        CLIENT_LOGGER.debug('Запущены процессы')
+
+        # Watchdog основной цикл, если один из потоков завершён,
+        # то значит или потеряно соединение или пользователь
+        # ввёл exit. Поскольку все события обработываются в потоках,
+        # достаточно просто завершить цикл.
+        while True:
+            time.sleep(1)
+            if receiver.is_alive() and user_interface.is_alive():
+                continue
+            break
+
+        # # основной цикл прогрммы:
+        # while True:
+        #     # режим работы - отправка сообщений
+        #     if client_mode == 'send':
+        #         try:
+        #             Message.send(
+        #                 transport,
+        #                 client_worker.create_message(transport)
+        #             )
+        #         except (
+        #                 ConnectionResetError, ConnectionError,
+        #                 ConnectionAbortedError):
+        #             CLIENT_LOGGER.error(
+        #                 f'Соединение с сервером {connect_address} было потеряно.')
+        #             sys.exit(1)
+        #
+        #     # Режим работы приём:
+        #     if client_mode == 'listen':
+        #         try:
+        #             client_worker.message_from_server(
+        #                 Message.receive(transport))
+        #         except (
+        #                 ConnectionResetError, ConnectionError,
+        #                 ConnectionAbortedError):
+        #             CLIENT_LOGGER.error(
+        #                 f'Соединение с сервером {connect_address} было потеряно.')
+        #             sys.exit(1)
